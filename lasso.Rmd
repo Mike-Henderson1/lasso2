@@ -2,29 +2,96 @@
 title: "Lasso"
 author: "Center on Urban Poverty"
 date: "March 1, 2019"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 output: html_document
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(foreign)
+library(tidyverse)
+library(glmnet)
+sig_coefs <- read_csv(here("docs", "output", "sig_coefs_all_demos_02_27_2019.csv"))
+vars <- as.data.frame(sig_coefs$vars)
 ```
 
-## R Markdown
+## Purpose
+Predicting the probability of any demolition within a hexagon in a given year, given the overall attributes of the hexagon's parcels/structures in the previous year. The outcome is binary, 1/0, if any/no demolitions. 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Lasso regression adds a penalty term to the estimator (MLE in this case) that biases regression coefficients towards 0. The trade offs for introducing bias to a model is a simpler model (i.e., fewer predictors) with less variance. 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+### Predictors 
+Sixteen housing variables aggregated to the 1000-foot hexagon level were selected to predict demolition. They take the form of counts, averages, or proportions. 
+```{r predictors, echo=FALSE} 
 
-```{r cars}
-summary(cars)
+print(vars)
+
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+### Model Fit
+These plots show the prediction accuracy of the model as the strength of the penalty term changes. Reading from right to left, the first red dot is the misclassification rate for the null model: when the penalty term is so strong that all the coefficients are pushed to zero. 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+With a binary outcome, the null prediction is simply the more frequent  of the potential outcomes. In 2011 for example, 588 of the 2054 hexagons had at least one demolition; thus, the null prediction is that all of the hexagons had zero demolitions. This prediction is wrong at a rate of 588/2054 = .286, the y-value of the furthest right dot. Moving left are the misclassification rates as a weaker and weaker penalty is applied. 
+
+The x axis is the natural log of lambda, a parameter that sets the strength of the penalty term, and the numbers along the top of the plot are the number of non-zero coefficients at different values of lambda. 
+
+The left vertical dotted line is the value of lambda that minimizes the error rate. The right vertical dotted line is the most regularized model (i.e., strongest penalty term & fewest non-zero coefficients) within 1 standard deviation of the minimum. 
+
+Looking at 2011 again, the left dotted line indicates the universal minimum for misclassification is .207, and is produced by a penalty term that pushes only one of the 16 predictors to zero (15 nonzero coefficients). 
+
+On the other hand, the right dotted line indicates that if we elect to go with a stronger penalty term we can utilize a model that, at a misclassification rate of .215, predicts demolition nearly as well, and does so with only 7 predictors. 
+
+### Misclassification Rates by Year {.tabset}
+#### 2011
+![](docs/output/misclass_all1011.png)
+
+
+
+#### 2012
+![](docs/output/misclass_all1112.png)
+
+
+
+#### 2013
+![](docs/output/misclass_all1213.png)
+
+
+
+#### 2014
+![](docs/output/misclass_all1314.png)
+
+
+
+
+#### 2015
+![](docs/output/misclass_all1415.png)
+
+
+
+
+
+#### 2016
+![](docs/output/misclass_all1516.png)
+
+
+
+
+
+#### 2017
+![](docs/output/misclass_all1617.png)
+
+
+
+
+
+### Key predictors of demolition by year
+This table shows the nonzero coefficients for the most regularized model (i.e., the one corresponding to the right dotted vertical line)  for each year.
+
+```{r pressure, echo=FALSE} 
+knitr::kable(sig_coefs[-1,])
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
